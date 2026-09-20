@@ -4,6 +4,7 @@ from marshmallow import ValidationError
 from sqlalchemy.exc import IntegrityError
 
 from app.database import SessionLocal
+from app.hold import harvest_hold_state
 from app.models.room import Room
 from app.models.shed import Shed
 from app.schemas.room import RoomCreateSchema, RoomOutSchema
@@ -26,6 +27,10 @@ def list_rooms():
         if shed_id is not None:
             q = q.filter(Room.shed_id == shed_id)
         rows = q.order_by(Room.id).all()
+        for room in rows:
+            state = harvest_hold_state(db, room.id)
+            room.latest_shade = state.latest.shade if state.latest else None
+            room.hold_harvest = state.held
         return jsonify(out_many.dump(rows))
     finally:
         db.close()

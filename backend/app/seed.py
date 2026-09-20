@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from app.auth import hash_password
 from app.database import SessionLocal
 from app.models.climate_log import ClimateLog
+from app.models.color_note import ColorNote
 from app.models.flush_harvest import FlushHarvest
 from app.models.room import Room
 from app.models.shed import Shed
@@ -134,6 +135,36 @@ def seed() -> None:
                         weight_kg=55.2,
                         grade="A",
                         operator_name="出菇员",
+                    ),
+                    # 菌盖色斑：R-01 停在高比例 dark（停采中）；
+                    # V-01 的 dark 之后已有更晚的 pale（hold 已解除）
+                    ColorNote(
+                        room_id=r1.id,
+                        shade="mottled",
+                        ratio_pct=30,
+                        noted_at=now - timedelta(days=1, hours=3),
+                        observer="出菇员",
+                    ),
+                    ColorNote(
+                        room_id=r1.id,
+                        shade="dark",
+                        ratio_pct=65,
+                        noted_at=now - timedelta(hours=2),
+                        observer="场长",
+                    ),
+                    ColorNote(
+                        room_id=r3.id,
+                        shade="dark",
+                        ratio_pct=55,
+                        noted_at=now - timedelta(days=2),
+                        observer="场长",
+                    ),
+                    ColorNote(
+                        room_id=r3.id,
+                        shade="pale",
+                        ratio_pct=12,
+                        noted_at=now - timedelta(hours=5),
+                        observer="出菇员",
                     ),
                 ]
             )

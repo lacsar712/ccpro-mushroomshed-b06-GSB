@@ -19,3 +19,5 @@ class RoomOutSchema(Schema):
     species = fields.Str()
     capacity_bags = fields.Int(data_key="capacityBags")
     status = fields.Str()
+    latest_shade = fields.Str(allow_none=True, data_key="latestShade", dump_default=None)
+    hold_harvest = fields.Bool(data_key="holdHarvest", dump_default=False)

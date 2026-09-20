@@ -145,6 +145,17 @@ a {
   margin: 16px 0 20px;
 }
 
+.panel h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  color: var(--forest-deep);
+}
+
+.panel .form-grid,
+.panel .table-wrap {
+  margin-top: 12px;
+}
+
 .form-stack,
 .form-grid {
   display: grid;
@@ -292,6 +303,26 @@ th {
 .badge.grade-c {
   background: #ede8e4;
   color: var(--mushroom-brown);
+}
+
+.badge.shade-pale {
+  background: #f4f1e2;
+  color: #7d6c34;
+}
+
+.badge.shade-mottled {
+  background: #f0e3d6;
+  color: var(--mushroom-cap);
+}
+
+.badge.shade-dark {
+  background: #e9d8d4;
+  color: #7a3226;
+}
+
+.badge.hold {
+  background: #f2d2cc;
+  color: var(--danger);
 }
 
 .login-page {

@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required
 from marshmallow import ValidationError
 
 from app.database import SessionLocal
+from app.hold import harvest_hold_state
 from app.models.flush_harvest import FlushHarvest
 from app.models.room import Room
 from app.schemas.flush_harvest import FlushHarvestCreateSchema, FlushHarvestOutSchema
@@ -42,6 +43,8 @@ def create_flush_harvest():
         room = db.query(Room).filter(Room.id == data["room_id"]).first()
         if not room:
             return jsonify({"detail": "出菇室不存在"}), 400
+        if harvest_hold_state(db, room.id).held:
+            return jsonify({"detail": "该出菇室处于停采状态：高比例 dark 色斑未解除，需登记更晚的 pale 备忘"}), 409
         item = FlushHarvest(
             room_id=data["room_id"],
             harvested_at=data["harvested_at"],

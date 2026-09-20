@@ -44,16 +44,25 @@ docker compose up --build
 
 1. **Auth**：JWT 登录（OAuth2 表单或 JSON），`/api/auth/login`、`/api/auth/me`，`Authorization: Bearer`
 2. **Shed 菇房**：`name`、`location`、`notes`
-3. **Room 出菇室**：`shedId`、`roomCode`、`species`、`capacityBags`、`status(fruiting|idle|sanitize)`；同菇房 `roomCode` 唯一
+3. **Room 出菇室**：`shedId`、`roomCode`、`species`、`capacityBags`、`status(fruiting|idle|sanitize)`；同菇房 `roomCode` 唯一；`GET /api/rooms` 每行附 `latestShade` 与 `holdHarvest`
 4. **ClimateLog 环境记录**：`roomId`、`recordedAt`、`tempC`、`humidityPct`、`co2Ppm`、`notes`；`humidityPct ∈ [1,100]`，否则 **400**
-5. **FlushHarvest 采收**：`roomId`、`harvestedAt`、`flushNo(≥1)`、`weightKg`、`grade(A|B|C)`、`operatorName`；`weightKg > 0`，否则 **400**
-6. **Dashboard**：`shedTotal`、`fruitingRoomCount`、`climateLast24h`、`harvestKgLast7d`
+5. **FlushHarvest 采收**：`roomId`、`harvestedAt`、`flushNo(≥1)`、`weightKg`、`grade(A|B|C)`、`operatorName`；`weightKg > 0`，否则 **400**；该室处于色斑停采状态时拒绝落库，返回 **409**
+6. **ColorNote 菌盖色斑备忘**：`roomId`、`shade(pale|mottled|dark)`、`ratioPct(0–100 整数)`、`notedAt`、`observer`；同室 `notedAt` 重复 → **409**；`GET /api/color-notes?roomId=` 按 `notedAt` 倒序
+7. **Dashboard**：`shedTotal`、`fruitingRoomCount`、`climateLast24h`、`harvestKgLast7d`
 
-各实体 API：`GET/POST` 列表与创建、`DELETE` 按 ID 删除。
+各实体 API：`GET/POST` 列表与创建、`DELETE` 按 ID 删除（ColorNote 仅 `GET/POST`）。
+
+### 色斑停采规则（hold）
+
+判定只落在 `backend/app/hold.py` 的 `harvest_hold_state()` 一处：`GET /api/rooms` 每行的 `holdHarvest` 与 `POST /api/flush-harvests` 落库前的拦截调用的是同一个函数。
+
+- **触发**：室内登记 `shade=dark` 且 `ratioPct > 40` 的色斑备忘后，该室停采，新的 FlushHarvest 返回 **409**。
+- **解除**：登记一条 `notedAt` 更晚的 `pale` 备忘，hold 即解除，恢复采收。
+- `mottled` 或 `ratioPct ≤ 40` 的 `dark` 备忘不改变停采状态；`GET /api/rooms` 的 `latestShade` 始终是该室最新一条备忘的 shade（无备忘为 `null`）。
 
 ## 前端页面
 
-Login · Dashboard · Sheds · Rooms · ClimateLogs · FlushHarvests（侧边栏布局）
+Login · Dashboard · Sheds · Rooms（含色斑备忘登记） · ClimateLogs · FlushHarvests（侧边栏布局）
 
 ## 本地开发（可选）
 
