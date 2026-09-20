@@ -6,7 +6,7 @@ from app.database import SessionLocal
 from app.models.flush_harvest import FlushHarvest
 from app.models.room import Room
 from app.schemas.flush_harvest import FlushHarvestCreateSchema, FlushHarvestOutSchema
-from app.utils import validation_error_response
+from app.utils import room_harvest_hold, validation_error_response
 
 bp = Blueprint("flush_harvests", __name__, url_prefix="/api/flush-harvests")
 
@@ -42,6 +42,8 @@ def create_flush_harvest():
         room = db.query(Room).filter(Room.id == data["room_id"]).first()
         if not room:
             return jsonify({"detail": "出菇室不存在"}), 400
+        if room_harvest_hold(db, room.id):
+            return jsonify({"detail": "该出菇室最新色斑为 dark 且占比超过 40%，停采中；登记一条更晚的 pale 备忘后方可采收"}), 409
         item = FlushHarvest(
             room_id=data["room_id"],
             harvested_at=data["harvested_at"],

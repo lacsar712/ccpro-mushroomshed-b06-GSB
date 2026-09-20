@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from app.auth import hash_password
 from app.database import SessionLocal
 from app.models.climate_log import ClimateLog
+from app.models.color_note import ColorNote
 from app.models.flush_harvest import FlushHarvest
 from app.models.room import Room
 from app.models.shed import Shed
@@ -134,6 +135,43 @@ def seed() -> None:
                         weight_kg=55.2,
                         grade="A",
                         operator_name="出菇员",
+                    ),
+                    # R-01：色斑一路加深，最新为高比例 dark → 停采中
+                    ColorNote(
+                        room_id=r1.id,
+                        shade="pale",
+                        ratio_pct=10,
+                        noted_at=now - timedelta(days=2),
+                        observer="场长",
+                    ),
+                    ColorNote(
+                        room_id=r1.id,
+                        shade="mottled",
+                        ratio_pct=30,
+                        noted_at=now - timedelta(days=1),
+                        observer="出菇员",
+                    ),
+                    ColorNote(
+                        room_id=r1.id,
+                        shade="dark",
+                        ratio_pct=62,
+                        noted_at=now - timedelta(hours=6),
+                        observer="出菇员",
+                    ),
+                    # V-01：dark 之后已登记更晚的 pale → 不停采
+                    ColorNote(
+                        room_id=r3.id,
+                        shade="dark",
+                        ratio_pct=55,
+                        noted_at=now - timedelta(days=3),
+                        observer="场长",
+                    ),
+                    ColorNote(
+                        room_id=r3.id,
+                        shade="pale",
+                        ratio_pct=15,
+                        noted_at=now - timedelta(days=1),
+                        observer="场长",
                     ),
                 ]
             )

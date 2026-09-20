@@ -1,9 +1,16 @@
-import { createSignal, onMount } from 'solid-js'
-import { For } from 'solid-js'
+import { createEffect, createSignal, onMount } from 'solid-js'
+import { For, Show } from 'solid-js'
 import { api } from '../api/client'
-import type { Room, RoomStatus, Shed } from '../types'
+import type { ColorNote, Room, RoomStatus, Shade, Shed } from '../types'
 
 const statuses: RoomStatus[] = ['fruiting', 'idle', 'sanitize']
+const shades: Shade[] = ['pale', 'mottled', 'dark']
+
+function toLocalInput(iso?: string) {
+  const d = iso ? new Date(iso) : new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 const empty = {
   shedId: '',
@@ -13,10 +20,20 @@ const empty = {
   status: 'fruiting' as RoomStatus,
 }
 
+const emptyNote = {
+  roomId: '',
+  notedAt: toLocalInput(),
+  shade: 'pale' as Shade,
+  ratioPct: '0',
+  observer: '',
+}
+
 export default function Rooms() {
   const [rows, setRows] = createSignal<Room[]>([])
   const [sheds, setSheds] = createSignal<Shed[]>([])
   const [form, setForm] = createSignal({ ...empty })
+  const [noteForm, setNoteForm] = createSignal({ ...emptyNote })
+  const [notes, setNotes] = createSignal<ColorNote[]>([])
   const [error, setError] = createSignal('')
 
   async function load() {
@@ -28,8 +45,21 @@ export default function Rooms() {
     setSheds(shedList)
   }
 
+  async function loadNotes(roomId: string) {
+    if (!roomId) {
+      setNotes([])
+      return
+    }
+    const list = await api<ColorNote[]>(`/api/color-notes?roomId=${roomId}`)
+    setNotes(list)
+  }
+
   onMount(() => {
     load().catch((e) => setError(e.message))
+  })
+
+  createEffect(() => {
+    loadNotes(noteForm().roomId).catch((e) => setError(e.message))
   })
 
   async function onSubmit(e: Event) {
@@ -53,6 +83,29 @@ export default function Rooms() {
     }
   }
 
+  async function onSubmitNote(e: Event) {
+    e.preventDefault()
+    setError('')
+    try {
+      await api('/api/color-notes', {
+        method: 'POST',
+        body: JSON.stringify({
+          roomId: Number(noteForm().roomId),
+          shade: noteForm().shade,
+          ratioPct: Number(noteForm().ratioPct),
+          notedAt: new Date(noteForm().notedAt).toISOString(),
+          observer: noteForm().observer,
+        }),
+      })
+      const roomId = noteForm().roomId
+      setNoteForm({ ...emptyNote, roomId, notedAt: toLocalInput() })
+      await load()
+      await loadNotes(roomId)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '保存失败')
+    }
+  }
+
   async function remove(id: number) {
     if (!confirm('确认删除该出菇室？')) return
     try {
@@ -63,6 +116,10 @@ export default function Rooms() {
     }
   }
 
+  function pickRoom(id: number) {
+    setNoteForm({ ...noteForm(), roomId: String(id) })
+  }
+
   function statusBadge(status: RoomStatus) {
     return `badge ${status}`
   }
@@ -71,7 +128,7 @@ export default function Rooms() {
     <div>
       <header class="page-header">
         <h1>出菇室</h1>
-        <p class="muted">菌种、袋数容量与房态</p>
+        <p class="muted">菌种、袋数容量与房态；色斑停采状态见「采收」列</p>
       </header>
       {error() && <div class="error">{error()}</div>}
 
@@ -141,6 +198,8 @@ export default function Rooms() {
               <th>品种</th>
               <th>容量</th>
               <th>状态</th>
+              <th>最新色斑</th>
+              <th>采收</th>
               <th />
             </tr>
           </thead>
@@ -157,6 +216,19 @@ export default function Rooms() {
                     <span class={statusBadge(r.status)}>{r.status}</span>
                   </td>
                   <td>
+                    <Show when={r.latestShade} fallback={<span class="muted">—</span>}>
+                      <span class={`badge shade-${r.latestShade}`}>{r.latestShade}</span>
+                    </Show>
+                  </td>
+                  <td>
+                    <span class={r.holdHarvest ? 'badge hold' : 'badge ok'}>
+                      {r.holdHarvest ? '停采' : '可采'}
+                    </span>
+                  </td>
+                  <td>
+                    <button type="button" class="btn ghost" onClick={() => pickRoom(r.id)}>
+                      记色斑
+                    </button>{' '}
                     <button type="button" class="btn ghost" onClick={() => remove(r.id)}>
                       删除
                     </button>
@@ -167,6 +239,107 @@ export default function Rooms() {
           </tbody>
         </table>
       </div>
+
+      <div class="panel">
+        <p class="hint" style="margin-top: 0">
+          菌盖色斑备忘：最新一条为 dark 且占比 &gt; 40% 时该室停采；登记一条更晚的 pale 即解除。
+        </p>
+        <form class="form-grid" onSubmit={onSubmitNote}>
+          <label>
+            出菇室
+            <select
+              value={noteForm().roomId}
+              onChange={(e) => setNoteForm({ ...noteForm(), roomId: e.currentTarget.value })}
+              required
+            >
+              <option value="">选择出菇室</option>
+              <For each={rows()}>
+                {(r) => (
+                  <option value={String(r.id)}>
+                    {r.roomCode} · {r.species}
+                  </option>
+                )}
+              </For>
+            </select>
+          </label>
+          <label>
+            观察时间
+            <input
+              type="datetime-local"
+              value={noteForm().notedAt}
+              onInput={(e) => setNoteForm({ ...noteForm(), notedAt: e.currentTarget.value })}
+              required
+            />
+          </label>
+          <label>
+            色斑
+            <select
+              value={noteForm().shade}
+              onChange={(e) => setNoteForm({ ...noteForm(), shade: e.currentTarget.value as Shade })}
+            >
+              <For each={shades}>{(s) => <option value={s}>{s}</option>}</For>
+            </select>
+          </label>
+          <label>
+            占比 (%)
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              value={noteForm().ratioPct}
+              onInput={(e) => setNoteForm({ ...noteForm(), ratioPct: e.currentTarget.value })}
+              required
+            />
+          </label>
+          <label>
+            观察人
+            <input
+              value={noteForm().observer}
+              onInput={(e) => setNoteForm({ ...noteForm(), observer: e.currentTarget.value })}
+              required
+            />
+          </label>
+          <button type="submit" class="btn primary">
+            登记色斑备忘
+          </button>
+        </form>
+      </div>
+
+      <Show when={noteForm().roomId}>
+        <p class="hint">所选出菇室的色斑备忘（新的在前）</p>
+        <Show
+          when={notes().length > 0}
+          fallback={<p class="hint">该室暂无色斑备忘</p>}
+        >
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>色斑</th>
+                  <th>占比</th>
+                  <th>观察人</th>
+                </tr>
+              </thead>
+              <tbody>
+                <For each={notes()}>
+                  {(n) => (
+                    <tr>
+                      <td>{new Date(n.notedAt).toLocaleString()}</td>
+                      <td>
+                        <span class={`badge shade-${n.shade}`}>{n.shade}</span>
+                      </td>
+                      <td>{n.ratioPct}%</td>
+                      <td>{n.observer}</td>
+                    </tr>
+                  )}
+                </For>
+              </tbody>
+            </table>
+          </div>
+        </Show>
+      </Show>
     </div>
   )
 }

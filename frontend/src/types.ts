@@ -1,5 +1,6 @@
 export type RoomStatus = 'fruiting' | 'idle' | 'sanitize'
 export type HarvestGrade = 'A' | 'B' | 'C'
+export type Shade = 'pale' | 'mottled' | 'dark'
 
 export interface Shed {
   id: number
@@ -15,6 +16,17 @@ export interface Room {
   species: string
   capacityBags: number
   status: RoomStatus
+  latestShade: Shade | null
+  holdHarvest: boolean
+}
+
+export interface ColorNote {
+  id: number
+  roomId: number
+  shade: Shade
+  ratioPct: number
+  notedAt: string
+  observer: string
 }
 
 export interface ClimateLog {

@@ -92,6 +92,7 @@ export default function FlushHarvests() {
               {(r) => (
                 <option value={String(r.id)}>
                   {r.roomCode} · {r.species}
+                  {r.holdHarvest ? '（停采中）' : ''}
                 </option>
               )}
             </For>

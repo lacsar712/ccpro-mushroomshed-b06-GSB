@@ -294,6 +294,31 @@ th {
   color: var(--mushroom-brown);
 }
 
+.badge.shade-pale {
+  background: #f4f1e4;
+  color: #857a3f;
+}
+
+.badge.shade-mottled {
+  background: #efe0c8;
+  color: var(--mushroom-cap);
+}
+
+.badge.shade-dark {
+  background: #e3d3cc;
+  color: var(--mushroom-brown);
+}
+
+.badge.hold {
+  background: #fdeceb;
+  color: var(--danger);
+}
+
+.badge.ok {
+  background: #dceee0;
+  color: #2a6b3f;
+}
+
 .login-page {
   min-height: 100vh;
   display: grid;

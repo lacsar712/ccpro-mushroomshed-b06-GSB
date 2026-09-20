@@ -7,7 +7,7 @@ from app.database import SessionLocal
 from app.models.room import Room
 from app.models.shed import Shed
 from app.schemas.room import RoomCreateSchema, RoomOutSchema
-from app.utils import validation_error_response
+from app.utils import latest_color_note, room_harvest_hold, validation_error_response
 
 bp = Blueprint("rooms", __name__, url_prefix="/api/rooms")
 
@@ -26,6 +26,10 @@ def list_rooms():
         if shed_id is not None:
             q = q.filter(Room.shed_id == shed_id)
         rows = q.order_by(Room.id).all()
+        for r in rows:
+            note = latest_color_note(db, r.id)
+            r.latest_shade = note.shade if note else None
+            r.hold_harvest = room_harvest_hold(db, r.id)
         return jsonify(out_many.dump(rows))
     finally:
         db.close()
@@ -57,6 +61,8 @@ def create_room():
             db.rollback()
             return jsonify({"detail": "同菇房内出菇室编号已存在"}), 400
         db.refresh(item)
+        item.latest_shade = None
+        item.hold_harvest = False
         return jsonify(out_schema.dump(item)), 201
     finally:
         db.close()
